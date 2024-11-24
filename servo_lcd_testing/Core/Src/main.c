@@ -1,4 +1,4 @@
-/* USER CODE BEGIN Header */
+* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file           : main.c
@@ -53,9 +53,9 @@ UART_HandleTypeDef huart1;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_I2C1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -94,17 +94,49 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_I2C1_Init();
   MX_TIM2_Init();
   MX_USART1_UART_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
+  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2, 1250);
+  HD44780_Init(2);
+  HD44780_Clear();
 
+  char received_data[20];
+  uint16_t moisture_value = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  HAL_UART_Receive(&huart1, (uint8_t *)received_data, sizeof(received_data), HAL_MAX_DELAY);
+	  moisture_value = atoi(received_data);
+
+	  HD44780_SetCursor(0, 0);
+	  HD44780_PrintStr(received_data);
+
+	  if (moisture_value >= 0 && moisture_value <= 1000){
+		      HD44780_SetCursor(0, 1);
+	          HD44780_PrintStr("Low Moisture");
+	          __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2, 1875);
+	  } else if (moisture_value > 1000 && moisture_value <= 2500) {
+		  	  HD44780_SetCursor(0, 1);
+	          HD44780_PrintStr("Medium Moisture");
+	          __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2, 1250);
+	  } else if (moisture_value > 2500 && moisture_value <= 4000) {
+		  	  HD44780_SetCursor(0, 1);
+	          HD44780_PrintStr("High Moisture");
+	          __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2, 1250);
+	  } else {
+		  HD44780_SetCursor(0, 1);
+		  HD44780_PrintStr("Recalibrating......");
+		  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2, 1250);
+		  }
+
+	  HAL_Delay(200);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -204,6 +236,7 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 0 */
 
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
   TIM_OC_InitTypeDef sConfigOC = {0};
 
@@ -211,11 +244,20 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 80-1;
+  htim2.Init.Prescaler = 84-1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 20000-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
   if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
   {
     Error_Handler();
@@ -291,21 +333,11 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : LD2_Pin */
-  GPIO_InitStruct.Pin = LD2_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
