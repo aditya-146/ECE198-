@@ -111,31 +111,46 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  HAL_UART_Receive(&huart1, (uint8_t *)received_data, sizeof(received_data), HAL_MAX_DELAY);
-	  moisture_value = atoi(received_data);
+	  static uint16_t last_pwm_value = 1250; // Initially at 1250
 
-	  HD44780_SetCursor(0, 0);
-	  HD44780_PrintStr(received_data);
+	  if (moisture_value <= 1000) {
+	      HD44780_SetCursor(0, 1);
+	      HD44780_PrintStr("Low Moisture");
 
-	  if (moisture_value >= 0 && moisture_value <= 1000){
-		      HD44780_SetCursor(0, 1);
-	          HD44780_PrintStr("Low Moisture");
-	          __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2, 1875);
-	  } else if (moisture_value > 1000 && moisture_value <= 2500) {
-		  	  HD44780_SetCursor(0, 1);
-	          HD44780_PrintStr("Medium Moisture");
-	          __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2, 1250);
-	  } else if (moisture_value > 2500 && moisture_value <= 4000) {
-		  	  HD44780_SetCursor(0, 1);
-	          HD44780_PrintStr("High Moisture");
-	          __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2, 1250);
+	      // Move the servo slowly to 1875 (if it's not already there)
+	      if (last_pwm_value != 1875) {
+	          for (uint16_t pwm_value = last_pwm_value; pwm_value <= 1875; pwm_value++) {
+	              __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, pwm_value);
+	              HAL_Delay(10); // Adjust delay for smooth movement
+	          }
+	          last_pwm_value = 1875; // Update the position
+	      }
+	  } else if ((moisture_value > 1000 && moisture_value <= 2500) || (moisture_value > 2500 && moisture_value <= 4000) || moisture_value == -1) {
+	      HD44780_SetCursor(0, 1);
+	      HD44780_PrintStr("Medium/High Moisture");
+
+	      // Move the servo slowly back to 1250 (if it's not already there)
+	      if (last_pwm_value != 1250) {
+	          for (uint16_t pwm_value = last_pwm_value; pwm_value >= 1250; pwm_value--) {
+	              __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, pwm_value);
+	              HAL_Delay(10); // Adjust delay for smooth movement
+	          }
+	          last_pwm_value = 1250; // Update the position
+	      }
 	  } else {
-		  HD44780_SetCursor(0, 1);
-		  HD44780_PrintStr("Recalibrating......");
-		  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2, 1250);
-		  }
+	      HD44780_SetCursor(0, 1);
+	      HD44780_PrintStr("Recalibrating......");
 
-	  HAL_Delay(200);
+	      // Move the servo slowly back to 1250 during recalibration (if it's not already there)
+	      if (last_pwm_value != 1250) {
+	          for (uint16_t pwm_value = last_pwm_value; pwm_value >= 1250; pwm_value--) {
+	              __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, pwm_value);
+	              HAL_Delay(10); // Adjust delay for smooth movement
+	          }
+	          last_pwm_value = 1250; // Update the position
+	      }
+	  }
+
 
     /* USER CODE END WHILE */
 
