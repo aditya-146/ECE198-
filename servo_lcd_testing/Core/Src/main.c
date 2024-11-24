@@ -1,4 +1,4 @@
-* USER CODE BEGIN Header */
+]/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file           : main.c
@@ -18,6 +18,9 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "liquidcrystal_i2c.h"
+#include <stdlib.h>
+
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -111,9 +114,14 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  HAL_UART_Receive(&huart1, (uint8_t *)received_data, sizeof(received_data), HAL_MAX_DELAY);
+	  moisture_value = atoi(received_data);
+
+	  HD44780_SetCursor(0, 0);
+	  HD44780_PrintStr(received_data);
 	  static uint16_t last_pwm_value = 1250; // Initially at 1250
 
-	  if (moisture_value <= 1000) {
+	  if (moisture_value <= 800) {
 	      HD44780_SetCursor(0, 1);
 	      HD44780_PrintStr("Low Moisture");
 
@@ -125,7 +133,7 @@ int main(void)
 	          }
 	          last_pwm_value = 1875; // Update the position
 	      }
-	  } else if ((moisture_value > 1000 && moisture_value <= 2500) || (moisture_value > 2500 && moisture_value <= 4000) || moisture_value == -1) {
+	  } else if (moisture_value > 800 || moisture_value == -1) {
 	      HD44780_SetCursor(0, 1);
 	      HD44780_PrintStr("Medium/High Moisture");
 
@@ -150,6 +158,8 @@ int main(void)
 	          last_pwm_value = 1250; // Update the position
 	      }
 	  }
+
+	  HAL_Delay(200);
 
 
     /* USER CODE END WHILE */
